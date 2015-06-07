@@ -12,7 +12,17 @@ When user wants to play song, the song will be played from the hidden folder.*
 
 **MusicPlayer** uses **pyQt** for GUI. ORM in Python via **SQLAlchemy**. For playing files the app uses **pyglet**.
 
+Short links of used libs for music:
+ - [pyglet] - play music
+ - [mutagen] - get files' metadata
+ - [pydub] - convert files to .wav
+ 
+
 License
 ----
 
 MIT
+
+[mutagen]:https://mutagen.readthedocs.org/en/latest/tutorial.html
+[pyglet]:https://pyglet.readthedocs.org/en/pyglet-1.2-maintenance/programming_guide/quickstart.html#mp3
+[pydub]:http://pydub.com/

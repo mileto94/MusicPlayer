@@ -2,6 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import relationship
+from os import mkdir
 
 # base table from which declare own tables
 BaseTable = declarative_base()
@@ -14,6 +15,7 @@ class Song(BaseTable):
     path = Column(String)
     artist = Column(String)  # nullable=True
     length = Column(Integer)
+    album = Column(String)  # null=True
 
     def __str__(self):
         return '{} - {} ({})'.format(self.artist, self.name, self.length)
@@ -38,8 +40,9 @@ class Playlist(BaseTable):
 
 
 def create_db(db_name):
+    folder = mkdir('.music_player')
     engine = create_engine('sqlite:///{}.db'.format(db_name))
 
     # will create all tables
     BaseTable.metadata.create_all(engine)
-    return engine
+    return folder, engine
