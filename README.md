@@ -9,6 +9,10 @@ Using this fancy app you can listen music songs, edit their metadata, get more i
 . When starting the player for the first time, it creates new hidden folder in its folder where it saves converted songs to .wav files via pydub lib.
 When user wants to play song, the song will be played from the hidden folder.
 
+### Future plans
+This app will be like library - it could be used both as terminal and desktop application. The point is to separate logic from GUI in order to be reusable.
+GUI will have main sreen with buttons for play, pause, stop, previous, next and repeat song. It will show artist, song's name, song's length and current seconds of playing the file. There will be clock with real time and button for raising up or slowing down the volume. Probably the app will be able to visualize some kind of video files.
+
 
 **MusicPlayer** uses **pyQt** for GUI. ORM in Python via **SQLAlchemy**. For playing files the app uses **pyglet**.
 
@@ -16,12 +20,11 @@ Short links of used libs for music:
  - [pyglet] - play music
  - [mutagen] - get files' metadata
  - [pydub] - convert files to .wav
- - 
+
  
 #### Requires
-ffmpeg, which is available after
-    sudo apt-get install libav-tools
-in OS X
+ffmpeg, which is available after **sudo apt-get install libav-tools** in OS X.
+
  
 
 License
