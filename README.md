@@ -16,6 +16,12 @@ Short links of used libs for music:
  - [pyglet] - play music
  - [mutagen] - get files' metadata
  - [pydub] - convert files to .wav
+ - 
+ 
+#### Requires
+ffmpeg, which is available after
+    sudo apt-get install libav-tools
+in OS X
  
 
 License
