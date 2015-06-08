@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from mutagen.easyid3 import EasyID3
 
 
-def insert_into_db(engine, song_info):
+def insert_song_into_db(engine, song_info):
     # Session is our Data Mapper
     session = Session(bind=engine)
 
@@ -26,7 +26,7 @@ def create_song(db_name, path, name=''):
 
     if exists(path):
         old_song = AudioSegment.from_mp3(path)
-        song_name = '{}'.format(path.split('.')[0])
+        song_name = '{}.wav'.format(path.split('.')[0])
         converted_song = old_song.export(song_name, format='wav')
 
         original_song = EasyID3(path)
@@ -37,7 +37,7 @@ def create_song(db_name, path, name=''):
         # song['length'] = original_song.info.length
         song['length'] = old_song.duration_seconds
         song['album'] = original_song['album'][0]
-        insert_into_db(engine, song)
+        insert_song_into_db(engine, song)
     else:
         raise Exception('There is not such file or directory! Try another one')
 
