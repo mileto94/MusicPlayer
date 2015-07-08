@@ -25,6 +25,20 @@ Short links of used libs for music:
 #### Requires
 ffmpeg, which is available after **sudo apt-get install libav-tools** in OS X.
 
+
+Installation:
+ - sudo apt-get install python3.4-dev
+ - sudo apt-get install build-essential
+ - sudo apt-get install qt4-dev-tools libqt4-dev libqt4-core libqt4-gui
+ - unpack sip and pyqt
+ - $ cd ~/sip-some-version 
+ - python3.4 configure.py
+ - sudo make # installs sip package
+ - sudo make install
+ - $ cd ~/pyqt-directory
+ - sudo python3.4 configure.py
+ - sudo make # installs qt package
+ - sudo make install
  
 
 License
