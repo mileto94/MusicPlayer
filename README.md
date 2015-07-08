@@ -26,7 +26,7 @@ Short links of used libs for music:
 ffmpeg, which is available after **sudo apt-get install libav-tools** in OS X.
 
 
-Installation:
+#### Installation:
  - sudo apt-get install python3.4-dev
  - sudo apt-get install build-essential
  - sudo apt-get install qt4-dev-tools libqt4-dev libqt4-core libqt4-gui
