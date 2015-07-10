@@ -150,20 +150,20 @@ class PlaylistModel(QtCore.QAbstractItemModel):
 
         self.music_playlist = None
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
+    def rowCount(self, parent=Qt.QModelIndex()):
         if self.music_playlist is not None and not parent.isValid():
             return self.music_playlist.mediaCount()
         return 0
 
-    def columnColumn(self, parent=QtCore.QModelIndex()):
+    def columnCount(self, parent=Qt.QModelIndex()):
         return self.ColumnCount if not parent.isValid() else 0
 
-    def index(self, row, column, parent=QtCore.QModelIndex()):
+    def index(self, row, column, parent=Qt.QModelIndex()):
         if (self.music_playlist is not None and not parent.isValid() and
             row >= 0 and row < self.music_playlist.mediaCount() and
                 column >= 0 and column < self.ColumnCount):
             return self.createIndex(row, column)
-        return QtCore.QModelIndex()
+        return Qt.QModelIndex()
 
     def parent(self, child):
         return QtCore.QModelIndex()
