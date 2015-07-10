@@ -13,8 +13,8 @@ class Controllers(Qt.QWidget):
     changeMuting = Qt.pyqtSignal(bool)
     changeSpeed = Qt.pyqtSignal(float)
 
-    def __init__(self):
-        super(Controllers, self).__init__()
+    def __init__(self, parent=None):
+        super(Controllers, self).__init__(parent)
 
         # player initial state
         self.playerState = QMediaPlayer.StoppedState
@@ -60,7 +60,7 @@ class Controllers(Qt.QWidget):
 
         # create layout
         layout = Qt.QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(30, 0, 0, 0)
         layout.addWidget(self.previousButton)
         layout.addWidget(self.playButton)
         layout.addWidget(self.stopButton)
@@ -125,13 +125,16 @@ class Controllers(Qt.QWidget):
 
         if state == QMediaPlayer.StoppedState:
             self.stopButton.setEnabled(False)
-            self.playButton.setIcon(Qt.QStyle.SP_MediaPlay)
+            self.playButton.setIcon(self.style().standardIcon(
+                Qt.QStyle.SP_MediaPlay))
         elif state == QMediaPlayer.PlayingState:
             self.stopButton.setEnabled(True)
-            self.playButton.setIcon(Qt.QStyle.SP_MediaPause)
+            self.playButton.setIcon(self.style().standardIcon(
+                Qt.QStyle.SP_MediaPause))
         elif state == QMediaPlayer.PausedState:
             self.stopButton.setEnabled(True)
-            self.playButton.setIcon(Qt.QStyle.SP_MediaPlay)
+            self.playButton.setIcon(self.style().standardIcon(
+                Qt.QStyle.SP_MediaPlay))
 
 
 class VideoWidget(Qt.QVideoWidget):
@@ -139,16 +142,16 @@ class VideoWidget(Qt.QVideoWidget):
 
 
 class Playlist(QtCore.QAbstractItemModel):
-    def __init__(self):
-        super(Playlist, self).__init__()
+    def __init__(self, parent=None):
+        super(Playlist, self).__init__(parent)
 
     def setPlaylist(self, playlist):
         pass
 
 
 class HistogramWidget(Qt.QWidget):
-    def __init__(self):
-        super(HistogramWidget, self).__init__()
+    def __init__(self, parent=None):
+        super(HistogramWidget, self).__init__(parent)
 
     def processFrame(self, frame):
         pass
@@ -158,9 +161,9 @@ class Player(Qt.QWidget):
     """docstring for Player"""
     fullScreenChanged = Qt.pyqtSignal(bool)
 
-    def __init__(self, playlist):
+    def __init__(self, playlist, parent=None):
         # create player
-        super(Player, self).__init__()
+        super(Player, self).__init__(parent)
 
         self.trackInfo = ''
         self.statusInfo = ''
@@ -269,7 +272,7 @@ class Player(Qt.QWidget):
         layout.addLayout(controlLayout)
         layout.addLayout(histogramLayout)
 
-        self.setLayout(layout)
+        # self.setLayout(layout)
 
         if not self.player.isAvailable():
             Qt.QMessageBox(self, 'Unavailable service')
@@ -281,6 +284,71 @@ class Player(Qt.QWidget):
         self.metaDataChanged()
 
         self.addToPlaylist(playlist)
+
+        # set icon
+        self.setWindowIcon(Qt.QIcon('favicon.ico'))
+
+        # create menus
+        toolBar = Qt.QToolBar()
+
+        # create basic actions
+        self.createActions()
+
+        # create simpleButton
+        simpleButton = Qt.QToolButton()
+        simpleButton.setDefaultAction(self.simpleAct)
+
+        # create fileButton for fileMenu
+        fileButton = Qt.QToolButton()
+        fileButton.setText('File')
+        fileButton.setPopupMode(Qt.QToolButton.MenuButtonPopup)
+        fileButton.setMenu(self.popFileMenu())
+
+        # create editButton for editMenu
+        editButton = Qt.QToolButton()
+        editButton.setText('Edit')
+        editButton.setPopupMode(Qt.QToolButton.MenuButtonPopup)
+        editButton.setMenu(self.popEditMenu())
+
+        # display in toolBar these buttons
+        toolBar.addWidget(simpleButton)
+        toolBar.addWidget(fileButton)
+        toolBar.addWidget(editButton)
+
+        # add toolBar to layout of the player
+        layout.addWidget(toolBar)
+        layout.addWidget(Qt.QGroupBox())
+
+        self.setWindowTitle("Python Music Player")
+        self.setLayout(layout)
+
+    # create fileMenu
+    def popFileMenu(self):
+        aMenu = Qt.QMenu(self)
+        aMenu.addAction(self.fileOpenAct)
+        aMenu.addAction(self.fileCloseAct)
+        return aMenu
+
+    # create editMenu
+    def popEditMenu(self):
+        aMenu = Qt.QMenu(self)
+        aMenu.addAction(self.editCopyAct)
+        aMenu.addAction(self.filePasteAct)
+        return aMenu
+
+    def createActions(self):
+        self.simpleAct = Qt.QAction('Simple', self, triggered=self.do_nothing)
+        self.fileOpenAct = Qt.QAction('Open', self, triggered=self.open)
+        self.fileOpenAct.setShortcut('Ctrl+O')
+
+        self.fileCloseAct = Qt.QAction('Close', self, triggered=self.close)
+        self.fileCloseAct.setShortcut('Ctrl+Q')
+
+        self.editCopyAct = Qt.QAction('Copy', self, triggered=self.do_nothing)
+        self.filePasteAct = Qt.QAction('Paste', self, triggered=self.do_nothing)
+
+    def do_nothing(self):
+        print('do nothing')
 
     def durationChanged(self):
         pass
@@ -312,9 +380,6 @@ class Player(Qt.QWidget):
     def previousAction(self):
         pass
 
-    def addToPlaylist(self, playlist):
-        pass
-
     def close(self):
         choice = Qt.QMessageBox.question(
             self,
@@ -324,6 +389,31 @@ class Player(Qt.QWidget):
 
         if choice == Qt.QMessageBox.Yes:
             sys.exit()
+
+    def open(self):
+        print('Open file')
+        names, _ = Qt.QFileDialog.getOpenFileNames(self, 'Open Files')
+        print(names)  # ['/home/milka/Documents/MusicPlayer/song.mp3']
+        self.addToPlaylist(names)
+
+    def addToPlaylist(self, names):
+        for name in names:
+            fileInfo = Qt.QFileInfo(name)
+            if fileInfo.exists():
+                url = QtCore.QUrl.fromLocalFile(fileInfo.absoluteFilePath())
+                print(url.path())  # /home/milka/Documents/MusicPlayer/song.mp3
+                print(dir(url))
+                print(url.url())  # file:///home/milka/Documents/MusicPlayer/song.mp3
+                # save_to_db song url
+                print(fileInfo.suffix())
+                if fileInfo.suffix().lower() == 'm3u':
+                    self.playlist.load(url)
+                else:
+                    self.playlist.addMedia(Qt.QMediaContent(url))
+            else:
+                url = QtCore.QUrl(name)
+                if url.isValid():
+                    self.playlist.addMedia(Qt.QMediaContent(url))
 
     # def enlarge_window(self, state):
     #     if state == QtCore.Qt.Checked:
