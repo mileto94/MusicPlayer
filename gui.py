@@ -181,12 +181,12 @@ class Player(Qt.QWidget):
 
         self.player.mediaStatusChanged.connect(self.statusChanged)
         self.player.bufferStatusChanged.connect(self.bufferingProgress)
-        # self.player.videoAvailableChanged.connect(self.videoAvailableChanged)
+        self.player.videoAvailableChanged.connect(self.videoAvailableChanged)
         self.player.error.connect(self.displayErrorMessage)
 
         # connect with VideoWidget
-        self.videoWidget = VideoWidget()
-        self.player.setVideoOutput(self.videoWidget)
+        # self.videoWidget = VideoWidget()
+        # self.player.setVideoOutput(self.videoWidget)
 
         # connect with PlaylistModel
         self.playlistModel = Playlist()
@@ -235,7 +235,7 @@ class Player(Qt.QWidget):
         controls.changeMuting.connect(self.player.setMuted)
         # setPlaybackRate is from QMediaPlayer
         controls.changeSpeed.connect(self.player.setPlaybackRate)
-        controls.stop.connect(self.videoWidget.update)
+        # controls.stop.connect(self.videoWidget.update)
 
         self.player.stateChanged.connect(controls.setState)
         self.player.volumeChanged.connect(controls.setVolume)
@@ -247,7 +247,7 @@ class Player(Qt.QWidget):
 
         # displayLayout
         displayLayout = Qt.QHBoxLayout()
-        displayLayout.addWidget(self.videoWidget, 2)
+        # displayLayout.addWidget(self.videoWidget, 2)
         displayLayout.addWidget(self.playlistView)
 
         # controlLayout
@@ -271,8 +271,6 @@ class Player(Qt.QWidget):
         layout.addLayout(hLayout)
         layout.addLayout(controlLayout)
         layout.addLayout(histogramLayout)
-
-        # self.setLayout(layout)
 
         if not self.player.isAvailable():
             Qt.QMessageBox(self, 'Unavailable service')
@@ -350,41 +348,114 @@ class Player(Qt.QWidget):
     def do_nothing(self):
         print('do nothing')
 
-    def durationChanged(self):
-        pass
+    # get and display song duration
+    def durationChanged(self, duration):
+        duration /= 1000
 
-    def positionChanged(self):
-        pass
+        self.duration = duration
+        self.slider.setMaximum(duration)
+
+    # change slider position
+    def positionChanged(self, progress):
+        progress /= 1000
+
+        if not self.slider.isSliderDown():
+            self.slider.setValue(progress)
+
+        self.updateDurationInfo(progress)
+
+    def updateDurationInfo(self, currentInfo):
+        duration = self.duration
+        if currentInfo or duration:
+            currentTime = QtCore.QTime(
+                (currentInfo / 3600) % 60,  # hours
+                (currentInfo / 60) % 60,  # minutes
+                currentInfo % 60,  # seconds
+                (currentInfo * 1000) % 1000)  # miliseconds
+            totalTime = QtCore.QTime(
+                (duration / 3600) % 60,  # hours
+                (duration / 60) % 60,  # minutes
+                duration % 60,  # seconds
+                (duration * 1000) % 1000)  # miliseconds
+            formating = 'hh:mm:ss' if duration > 3600 else 'mm:ss'
+            toString = (currentTime.toString(formating) + ' / ' +
+                        totalTime.toString(formating))
+        else:
+            toString = ''
+
+        self.labelDuration.setText(toString)
 
     def metaDataChanged(self):
-        pass
+        if self.player.isMetaDataAvailable():
+            self.setTrackInfo('{0} - {1}'.format(
+                self.player.metaData(Qt.QMediaMetaData.AlbumArtist),
+                self.player.metaData(Qt.QMediaMetaData.Title)))
 
-    def playistPositionChanged(self):
-        pass
+    def setTrackInfo(self, info):
+        self.trackInfo = info
 
-    def statusChanged(self):
-        pass
+        if self.statusInfo:
+            self.setWindowTitle('{0} | {1}'.format(
+                self.trackInfo, self.statusInfo))
+        else:
+            self.setWindowTitle(self.trackInfo)
 
-    def bufferingProgress(self):
-        pass
+    def playistPositionChanged(self, position):
+        self.playlistView.setCurrentIndex(
+            self.playlistModel.index(position, 0))
+
+    def statusChanged(self, status):
+        self.handleCursor(status)
+
+        if status == QMediaPlayer.LoadingMedia:
+            self.setStatusInfo('Loading...')
+        elif status == QMediaPlayer.StalledMedia:
+            self.setStatusInfo('Media Stalled')
+        elif status == QMediaPlayer.EndOfMedia:
+            Qt.QApplication.alert(self)
+        elif status == QMediaPlayer.InvalidMedia:
+            self.displayErrorMessage()
+        else:
+            self.setStatusInfo('')
+
+    def handleCursor(self, status):
+        if status in [QMediaPlayer.LoadingMedia, QMediaPlayer.BufferingMedia,
+                      QMediaPlayer.StalledMedia]:
+            self.setCursor(QtCore.Qt.BusyCursor)
+        else:
+            self.unsetCursor()
+
+    def setStatusInfo(self, info):
+        self.statusInfo = info
+
+        if self.statusInfo:
+            self.setWindowTitle('{0} | {1}'.format(
+                self.trackInfo, self.statusInfo))
+        else:
+            self.setWindowTitle(self.trackInfo)
+
+    def bufferingProgress(self, progress):
+        self.setStatusInfo('Buffering {0}'.format(progress))
 
     def displayErrorMessage(self):
-        pass
+        self.statusInfo(self.player.errorString())
 
-    def jump(self):
-        pass
+    def jump(self, index):
+        if index.isValid():
+            self.playlist.setCurrentIndex(index.row())
+            self.player.play()
 
-    def seek(self):
-        pass
+    def seek(self, seconds):
+        self.player.setPosition(seconds * 1000)
 
     def previousAction(self):
-        pass
+        self.playlist.previous()
 
     def close(self):
         choice = Qt.QMessageBox.question(
             self,
-            'Exit',
-            'Exit the app?',
+            'Close',
+            'Close the app?',
             Qt.QMessageBox.Yes | Qt.QMessageBox.No)
 
         if choice == Qt.QMessageBox.Yes:
@@ -393,7 +464,7 @@ class Player(Qt.QWidget):
     def open(self):
         print('Open file')
         names, _ = Qt.QFileDialog.getOpenFileNames(self, 'Open Files')
-        print(names)  # ['/home/milka/Documents/MusicPlayer/song.mp3']
+        # ['/home/milka/Documents/MusicPlayer/song.mp3']
         self.addToPlaylist(names)
 
     def addToPlaylist(self, names):
@@ -401,11 +472,11 @@ class Player(Qt.QWidget):
             fileInfo = Qt.QFileInfo(name)
             if fileInfo.exists():
                 url = QtCore.QUrl.fromLocalFile(fileInfo.absoluteFilePath())
-                print(url.path())  # /home/milka/Documents/MusicPlayer/song.mp3
-                print(dir(url))
-                print(url.url())  # file:///home/milka/Documents/MusicPlayer/song.mp3
+                # print(url.path())  # /home/milka/Documents/MusicPlayer/song.mp3
+                # print(dir(url))
+                # print(url.url())  # file:///home/milka/Documents/MusicPlayer/song.mp3
                 # save_to_db song url
-                print(fileInfo.suffix())
+                # print(fileInfo.suffix())  # wav, mp3
                 if fileInfo.suffix().lower() == 'm3u':
                     self.playlist.load(url)
                 else:
@@ -414,6 +485,23 @@ class Player(Qt.QWidget):
                 url = QtCore.QUrl(name)
                 if url.isValid():
                     self.playlist.addMedia(Qt.QMediaContent(url))
+
+    def videoAvailableChanged(self, available):
+        if available:
+            self.fullScreenButton.clicked.connect(
+                self.videoWidget.setFullScreen)
+            self.videoWidget.fullScreenChanged.connect(
+                self.fullScreenButton.setChecked)
+
+            if self.fullScreenButton.isChecked():
+                self.videoWidget.setFullScreen(True)
+        else:
+            self.fullScreenButton.clicked.disconnect(
+                self.videoWidget.setFullScreen)
+            self.videoWidget.fullScreenChanged.disconnect(
+                self.fullScreenButton.setChecked)
+
+            self.videoWidget.setFullScreen(False)
 
     # def enlarge_window(self, state):
     #     if state == QtCore.Qt.Checked:
