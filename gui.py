@@ -141,12 +141,88 @@ class VideoWidget(Qt.QVideoWidget):
     pass
 
 
-class Playlist(QtCore.QAbstractItemModel):
+class PlaylistModel(QtCore.QAbstractItemModel):
+
+    Title, ColumnCount = range(2)
+
     def __init__(self, parent=None):
-        super(Playlist, self).__init__(parent)
+        super(PlaylistModel, self).__init__(parent)
+
+        self.music_playlist = None
+
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        if self.music_playlist is not None and not parent.isValid():
+            return self.music_playlist.mediaCount()
+        return 0
+
+    def columnColumn(self, parent=QtCore.QModelIndex()):
+        return self.ColumnCount if not parent.isValid() else 0
+
+    def index(self, row, column, parent=QtCore.QModelIndex()):
+        if (self.music_playlist is not None and not parent.isValid() and
+            row >= 0 and row < self.music_playlist.mediaCount() and
+                column >= 0 and column < self.ColumnCount):
+            return self.createIndex(row, column)
+        return QtCore.QModelIndex()
+
+    def parent(self, child):
+        return QtCore.QModelIndex()
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if index.isValid() and role == QtCore.Qt.DisplayRole:
+            if index.column() == self.Title:
+                location = self.music_playlist.media(index.row()).canonicalUrl()
+                return Qt.QFileInfo(location.path()).fileName()
+            return self.m_data[index]
+
+    def playlist(self):
+        return self.music_playlist
 
     def setPlaylist(self, playlist):
-        pass
+        if self.music_playlist is not None:
+            self.music_playlist.mediaAboutToBeInserted.disconnect(
+                self.beginInsertItems)
+            self.music_playlist.mediaInserted.disconnect(self.endInsertItems)
+            self.music_playlist.mediaAboutToBeRemoved.disconnect(
+                self.beginRemoveItems)
+            self.music_playlist.mediaRemoved.disconnect(self.endRemoveItems)
+            self.music_playlist.mediaChanged.disconnect(self.changeItems)
+
+        self.beginResetModel()
+        self.music_playlist = playlist
+
+        if self.music_playlist is not None:
+            self.music_playlist.mediaAboutToBeInserted.connect(
+                self.beginInsertItems)
+            self.music_playlist.mediaInserted.connect(self.endInsertItems)
+            self.music_playlist.mediaAboutToBeRemoved.connect(
+                self.beginRemoveItems)
+            self.music_playlist.mediaRemoved.connect(self.endRemoveItems)
+            self.music_playlist.mediaChanged.connect(self.changeItems)
+
+        self.endResetModel()
+
+    def beginInsertItems(self, start, end):
+        # derived from super
+        self.beginInsertRows(QtCore.QModelIndex(), start, end)
+
+    def endInsertItems(self):
+        # derived from super
+        self.endInsertRows()
+
+    def beginRemoveItems(self, start, end):
+        # derived from super
+        self.beginRemoveRows(QtCore.QModelIndex(), start, end)
+
+    def endRemoveItems(self):
+        # derived from super
+        self.endRemoveRows()
+
+    def changeItems(self, start, end):
+        # derived from super
+        self.dataChanged.emit(
+            self.index(start, 0),
+            self.index(end, self.ColumnCount))
 
 
 class HistogramWidget(Qt.QWidget):
@@ -177,11 +253,11 @@ class Player(Qt.QWidget):
         self.player.durationChanged.connect(self.durationChanged)
         self.player.positionChanged.connect(self.positionChanged)
         self.player.metaDataChanged.connect(self.metaDataChanged)
-        self.playlist.currentIndexChanged.connect(self.playistPositionChanged)
+        self.playlist.currentIndexChanged.connect(self.playlistPositionChanged)
 
         self.player.mediaStatusChanged.connect(self.statusChanged)
         self.player.bufferStatusChanged.connect(self.bufferingProgress)
-        self.player.videoAvailableChanged.connect(self.videoAvailableChanged)
+        # self.player.videoAvailableChanged.connect(self.videoAvailableChanged)
         self.player.error.connect(self.displayErrorMessage)
 
         # connect with VideoWidget
@@ -189,7 +265,7 @@ class Player(Qt.QWidget):
         # self.player.setVideoOutput(self.videoWidget)
 
         # connect with PlaylistModel
-        self.playlistModel = Playlist()
+        self.playlistModel = PlaylistModel()
         self.playlistModel.setPlaylist(self.playlist)
 
         self.playlistView = Qt.QListView()
@@ -253,10 +329,10 @@ class Player(Qt.QWidget):
         # controlLayout
         controlLayout = Qt.QHBoxLayout()
         controlLayout.setContentsMargins(0, 0, 0, 0)
-        # connetct controlLayout with controls
+        # connect controlLayout with controls
         controlLayout.addWidget(controls)
         controlLayout.addStretch(1)
-        # connetct controlLayout with fullScreenButton
+        # connect controlLayout with fullScreenButton
         controlLayout.addWidget(self.fullScreenButton)
 
         # visualize player
@@ -271,17 +347,6 @@ class Player(Qt.QWidget):
         layout.addLayout(hLayout)
         layout.addLayout(controlLayout)
         layout.addLayout(histogramLayout)
-
-        if not self.player.isAvailable():
-            Qt.QMessageBox(self, 'Unavailable service')
-            # self.displayErrorMessage()
-            controls.setEnabled(False)
-            self.playlistView.setEnabled(False)
-            self.fullScreenButton.setEnabled(False)
-
-        self.metaDataChanged()
-
-        self.addToPlaylist(playlist)
 
         # set icon
         self.setWindowIcon(Qt.QIcon('favicon.ico'))
@@ -319,6 +384,17 @@ class Player(Qt.QWidget):
 
         self.setWindowTitle("Python Music Player")
         self.setLayout(layout)
+
+        if not self.player.isAvailable():
+            Qt.QMessageBox(self, 'Unavailable service')
+            # self.displayErrorMessage()
+            controls.setEnabled(False)
+            self.playlistView.setEnabled(False)
+            self.fullScreenButton.setEnabled(False)
+
+        self.metaDataChanged()
+
+        self.addToPlaylist(playlist)
 
     # create fileMenu
     def popFileMenu(self):
@@ -400,7 +476,7 @@ class Player(Qt.QWidget):
         else:
             self.setWindowTitle(self.trackInfo)
 
-    def playistPositionChanged(self, position):
+    def playlistPositionChanged(self, position):
         self.playlistView.setCurrentIndex(
             self.playlistModel.index(position, 0))
 
@@ -486,22 +562,22 @@ class Player(Qt.QWidget):
                 if url.isValid():
                     self.playlist.addMedia(Qt.QMediaContent(url))
 
-    def videoAvailableChanged(self, available):
-        if available:
-            self.fullScreenButton.clicked.connect(
-                self.videoWidget.setFullScreen)
-            self.videoWidget.fullScreenChanged.connect(
-                self.fullScreenButton.setChecked)
+    # def videoAvailableChanged(self, available):
+    #     if available:
+    #         self.fullScreenButton.clicked.connect(
+    #             self.videoWidget.setFullScreen)
+    #         self.videoWidget.fullScreenChanged.connect(
+    #             self.fullScreenButton.setChecked)
 
-            if self.fullScreenButton.isChecked():
-                self.videoWidget.setFullScreen(True)
-        else:
-            self.fullScreenButton.clicked.disconnect(
-                self.videoWidget.setFullScreen)
-            self.videoWidget.fullScreenChanged.disconnect(
-                self.fullScreenButton.setChecked)
+    #         if self.fullScreenButton.isChecked():
+    #             self.videoWidget.setFullScreen(True)
+    #     else:
+    #         self.fullScreenButton.clicked.disconnect(
+    #             self.videoWidget.setFullScreen)
+    #         self.videoWidget.fullScreenChanged.disconnect(
+    #             self.fullScreenButton.setChecked)
 
-            self.videoWidget.setFullScreen(False)
+    #         self.videoWidget.setFullScreen(False)
 
     # def enlarge_window(self, state):
     #     if state == QtCore.Qt.Checked:
