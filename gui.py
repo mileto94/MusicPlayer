@@ -1,6 +1,6 @@
 import sys
 from PyQt5 import Qt, QtCore
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaPlaylist
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaPlaylist, QVideoFrame
 
 
 class Controllers(Qt.QWidget):
@@ -148,19 +148,19 @@ class PlaylistModel(QtCore.QAbstractItemModel):
     def __init__(self, parent=None):
         super(PlaylistModel, self).__init__(parent)
 
-        self.music_playlist = None
+        self.musicPlaylist = None
 
     def rowCount(self, parent=Qt.QModelIndex()):
-        if self.music_playlist is not None and not parent.isValid():
-            return self.music_playlist.mediaCount()
+        if self.musicPlaylist is not None and not parent.isValid():
+            return self.musicPlaylist.mediaCount()
         return 0
 
     def columnCount(self, parent=Qt.QModelIndex()):
         return self.ColumnCount if not parent.isValid() else 0
 
     def index(self, row, column, parent=Qt.QModelIndex()):
-        if (self.music_playlist is not None and not parent.isValid() and
-            row >= 0 and row < self.music_playlist.mediaCount() and
+        if (self.musicPlaylist is not None and not parent.isValid() and
+            row >= 0 and row < self.musicPlaylist.mediaCount() and
                 column >= 0 and column < self.ColumnCount):
             return self.createIndex(row, column)
         return Qt.QModelIndex()
@@ -171,34 +171,34 @@ class PlaylistModel(QtCore.QAbstractItemModel):
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if index.isValid() and role == QtCore.Qt.DisplayRole:
             if index.column() == self.Title:
-                location = self.music_playlist.media(index.row()).canonicalUrl()
+                location = self.musicPlaylist.media(index.row()).canonicalUrl()
                 return Qt.QFileInfo(location.path()).fileName()
-            return self.m_data[index]
+            return self.musicData[index]
 
     def playlist(self):
-        return self.music_playlist
+        return self.musicPlaylist
 
     def setPlaylist(self, playlist):
-        if self.music_playlist is not None:
-            self.music_playlist.mediaAboutToBeInserted.disconnect(
+        if self.musicPlaylist is not None:
+            self.musicPlaylist.mediaAboutToBeInserted.disconnect(
                 self.beginInsertItems)
-            self.music_playlist.mediaInserted.disconnect(self.endInsertItems)
-            self.music_playlist.mediaAboutToBeRemoved.disconnect(
+            self.musicPlaylist.mediaInserted.disconnect(self.endInsertItems)
+            self.musicPlaylist.mediaAboutToBeRemoved.disconnect(
                 self.beginRemoveItems)
-            self.music_playlist.mediaRemoved.disconnect(self.endRemoveItems)
-            self.music_playlist.mediaChanged.disconnect(self.changeItems)
+            self.musicPlaylist.mediaRemoved.disconnect(self.endRemoveItems)
+            self.musicPlaylist.mediaChanged.disconnect(self.changeItems)
 
         self.beginResetModel()
-        self.music_playlist = playlist
+        self.musicPlaylist = playlist
 
-        if self.music_playlist is not None:
-            self.music_playlist.mediaAboutToBeInserted.connect(
+        if self.musicPlaylist is not None:
+            self.musicPlaylist.mediaAboutToBeInserted.connect(
                 self.beginInsertItems)
-            self.music_playlist.mediaInserted.connect(self.endInsertItems)
-            self.music_playlist.mediaAboutToBeRemoved.connect(
+            self.musicPlaylist.mediaInserted.connect(self.endInsertItems)
+            self.musicPlaylist.mediaAboutToBeRemoved.connect(
                 self.beginRemoveItems)
-            self.music_playlist.mediaRemoved.connect(self.endRemoveItems)
-            self.music_playlist.mediaChanged.connect(self.changeItems)
+            self.musicPlaylist.mediaRemoved.connect(self.endRemoveItems)
+            self.musicPlaylist.mediaChanged.connect(self.changeItems)
 
         self.endResetModel()
 
@@ -225,12 +225,117 @@ class PlaylistModel(QtCore.QAbstractItemModel):
             self.index(end, self.ColumnCount))
 
 
+class FrameProcessor(Qt.QWidget):
+
+    histogramReady = Qt.pyqtSignal(list)
+
+    @QtCore.pyqtSlot(QVideoFrame, int)
+    def processFrame(self, frame, levels):
+        histogram = [0.0] * levels
+
+        if levels and frame.map(Qt.QAbstractVideoBuffer.ReadOnly):
+            pixelFormat = frame.pixelFormat()
+
+            if (pixelFormat == QVideoFrame.Format_YUV420P or
+                    pixelFormat == QVideoFrame.Format_NV12):
+                # process YUV data
+                bits = frame.bits()
+                for index in range(frame.height() * frame.width()):
+                    histogram[(bits[index] * levels) >> 8] += 1.0
+            else:
+                imageFormat = QVideoFrame.imageFormatFromPixelFormat(
+                    pixelFormat)
+                if imageFormat != Qt.QImage.Format_Invalid:
+                    # process rgb data
+                    image = Qt.QImage(
+                        frame.bits(),
+                        frame.width(),
+                        frame.height(),
+                        imageFormat)
+                    for y in range(image.height()):
+                        for x in range(image.width()):
+                            pixel = image.pixel(x, y)
+                            histogram[(Qt.qGray(pixel) * levels) >> 8] += 1.0
+
+            # find max value
+            maxValue = max(histogram)
+
+            # normalize values between 0 and 1
+            if maxValue > 0.0:
+                histogram = list(map(lambda x: x / maxValue, histogram))
+
+            frame.unmap()
+        self.histogramReady.emit(histogram)
+
+
 class HistogramWidget(Qt.QWidget):
     def __init__(self, parent=None):
         super(HistogramWidget, self).__init__(parent)
 
+        self.mLevels = 128
+        self.mIsBusy = False
+        self.mHistogram = []
+        self.mProcessor = FrameProcessor()
+        self.mProcessorThread = QtCore.QThread()
+
+        self.mProcessor.moveToThread(self.mProcessorThread)
+        self.mProcessor.histogramReady.connect(self.setHistogram)
+
+    def __del__(self):
+        self.mProcessorThread.quit()
+        self.mProcessorThread.wait(10000)
+
+    @QtCore.pyqtSlot(list)
+    def setHistogram(self, histogram):
+        self.mIsBusy = False
+        self.mHistogram = list(histogram)
+        self.update()
+
     def processFrame(self, frame):
-        pass
+        if self.mIsBusy:
+            return
+
+        self.mIsBusy = True
+        QtCore.QMetaObject.invokeMethod(
+            self.mProcessor,
+            'processFrame',
+            QtCore.Qt.QueuedConnection,
+            Qt.Q_ARG(QVideoFrame, frame),
+            Qt.Q_ARG(int, self.mLevels))
+
+    def setLevels(self, levels):
+        self.mLevels = levels
+
+    def paintEvent(self, event):
+        painter = Qt.QPainter(self)
+
+        if len(self.mHistogram) == 0:
+            painter.fillRect(
+                0,
+                0,
+                self.width(),
+                self.height(),
+                Qt.QColor.fromRgb(0, 0, 0))
+            return
+        print('ELSE')
+        barWidth = self.width() / float(len(self.mHistogram))
+
+        for index, value in enumerate(self.mHistogram):
+            height = value * self.height()
+            # draw the level
+            painter.fillRect(
+                barWidth * index,
+                self.height() - height,
+                barWidth * (index + 1),
+                self.height(),
+                Qt.red)
+            # clear the rest of the control
+            painter.fillRect(
+                barWidth * index,
+                0,
+                barWidth * (index + 1),
+                self.height() - height,
+                Qt.black)
 
 
 class Player(Qt.QWidget):
