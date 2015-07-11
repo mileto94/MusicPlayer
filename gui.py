@@ -1,7 +1,7 @@
 import sys
 from PyQt5 import Qt, QtCore
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaPlaylist, QVideoFrame
-# from factory import create_song
+from factory import create_song
 
 
 class Controllers(Qt.QWidget):
@@ -358,6 +358,7 @@ class Player(Qt.QWidget):
         # create player object
         self.player = QMediaPlayer()
         self.playlist = QMediaPlaylist()
+        self.name = 'Current playlist'
         self.player.setPlaylist(self.playlist)
 
         self.player.durationChanged.connect(self.durationChanged)
@@ -428,8 +429,8 @@ class Player(Qt.QWidget):
         self.player.mutedChanged.connect(controls.setMuted)
 
         # create fullScreenButton
-        self.fullScreenButton = Qt.QPushButton('FullScreen')
-        self.fullScreenButton.setCheckable(True)
+        # self.fullScreenButton = Qt.QPushButton('FullScreen')
+        # self.fullScreenButton.setCheckable(True)
 
         # displayLayout
         displayLayout = Qt.QHBoxLayout()
@@ -443,7 +444,7 @@ class Player(Qt.QWidget):
         controlLayout.addWidget(controls)
         controlLayout.addStretch(1)
         # connect controlLayout with fullScreenButton
-        controlLayout.addWidget(self.fullScreenButton)
+        # controlLayout.addWidget(self.fullScreenButton)
 
         # visualize player
         layout = Qt.QVBoxLayout()
@@ -670,7 +671,6 @@ class Player(Qt.QWidget):
             sys.exit()
 
     def open(self):
-        print('Open file')
         names, _ = Qt.QFileDialog.getOpenFileNames(self, 'Open Files')
         # ['/home/milka/Documents/MusicPlayer/song.mp3']
         self.addToPlaylist(names)
@@ -680,12 +680,11 @@ class Player(Qt.QWidget):
             fileInfo = Qt.QFileInfo(name)
             if fileInfo.exists():
                 url = QtCore.QUrl.fromLocalFile(fileInfo.absoluteFilePath())
-                # print(url.path())  # /home/milka/Documents/MusicPlayer/song.mp3
-                # print(dir(url))
-                # print(url.url())  # file:///home/milka/Documents/MusicPlayer/song.mp3
+
                 # save_to_db song url
-                # create_song(url.path(), self.duration, playlist_name=self.playlist)
-                # print(fileInfo.suffix())  # wav, mp3
+                create_song(
+                    url.path(), self.duration, playlist_name=self.name)
+
                 if fileInfo.suffix().lower() == 'm3u':
                     self.playlist.load(url)
                 else:

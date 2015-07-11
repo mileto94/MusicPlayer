@@ -1,6 +1,5 @@
 from create_database import Song, Playlist, create_db
 from os.path import exists
-# from pydub import AudioSegment
 from sqlalchemy.orm import Session
 # from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
@@ -47,19 +46,14 @@ def create_song(path, duration, playlist_name='unknown', db_name=''):
         engine = create_db()
 
     if exists(path):
-        # song = AudioSegment.from_mp3(path)
-
         original_song = EasyID3(path)
-        # print(dir(original_song))
-        # print(original_song.size)
 
         db_song = {
-            'name': original_song['title'][0],
+            'name': original_song.get('title', [''])[0],
             'path': path,
-            'artist': original_song['artist'][0],
-            # 'length': song.duration_seconds,
+            'artist': original_song.get('artist', [''])[0],
             'length': duration,
-            'album': original_song['album'][0]
+            'album': original_song.get('album', [''])[0]
         }
 
         # original_song = MP3(path)
@@ -87,7 +81,11 @@ def update_song_id3(engine, song_name, new_name='', new_artist='',
                     new_album=''):
     session = Session(bind=engine)
     song = session.query(Song).filter(Song.name == song_name)
-    song_path = song.one().path
+    try:
+        song_path = song.one().path
+        pass
+    except Exception:
+        song_path = './song.mp3'
 
     updated = {}
 
@@ -113,13 +111,12 @@ def get_playlist(engine, playlist_name):
     return session.query(Playlist).filter(Playlist.name == playlist_name).one()
 
 
-# def main():
-#     engine = create_db()
-#     # update_song_id3(engine, 'new_test',
-#     #                 new_artist='Pesho',
-#     #                 new_album='2003')
-#     update_song_id3(engine, 'new_test', 'lqlq', '455')
+def main():
+    engine = create_db()
+    update_song_id3(engine, 'Bailando.mp3',
+                    new_artist='Enrique Iglesias',
+                    new_album='2003')
 
 
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()
