@@ -477,8 +477,12 @@ class Player(Qt.QWidget):
         self.playOnceButton.setEnabled(False)
 
         # create shuffleButton
-        shuffleButton = Qt.QToolButton()
-        shuffleButton.setDefaultAction(self.shuffleAct)
+        self.shuffleButton = Qt.QToolButton()
+        self.shuffleButton.setDefaultAction(self.shuffleAct)
+
+        # create sequentialButton
+        self.sequentialButton = Qt.QToolButton()
+        self.sequentialButton.setDefaultAction(self.sequentialAct)
 
         # create fileButton for fileMenu
         fileButton = Qt.QToolButton()
@@ -494,7 +498,8 @@ class Player(Qt.QWidget):
         # display in toolBar these buttons
         toolBar.addWidget(self.repeatButton)
         toolBar.addWidget(self.playOnceButton)
-        toolBar.addWidget(shuffleButton)
+        toolBar.addWidget(self.shuffleButton)
+        toolBar.addWidget(self.sequentialButton)
         toolBar.addWidget(fileButton)
         toolBar.addWidget(closeButton)
 
@@ -528,7 +533,9 @@ class Player(Qt.QWidget):
         self.playOnceAct = Qt.QAction(
             'Play once', self, triggered=self.playOnceSong)
         self.shuffleAct = Qt.QAction(
-            'Shuffle', self, triggered=self.playlist.shuffle)
+            'Shuffle', self, triggered=self.playlist.shuffle())
+        self.sequentialAct = Qt.QAction(
+            'Sequential', self, triggered=self.playSequential)
         self.fileOpenAct = Qt.QAction('Open', self, triggered=self.open)
         self.fileOpenAct.setShortcut('Ctrl+O')
 
@@ -541,9 +548,13 @@ class Player(Qt.QWidget):
         self.playOnceButton.setEnabled(True)
 
     def playOnceSong(self):
-        self.playlist.setPlaybackMode(QMediaPlaylist.CurrentItemOnce)
+        self.playlist.setPlaybackMode(QMediaPlaylist.Sequential)
         self.playOnceButton.setEnabled(False)
         self.repeatButton.setEnabled(True)
+
+    # unproperly used
+    def playSequential(self):
+        self.playlist.setPlaybackMode(QMediaPlaylist.Sequential)
 
     # get and display song duration
     def durationChanged(self, duration):
