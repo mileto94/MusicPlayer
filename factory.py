@@ -40,15 +40,18 @@ def insert_playlist_into_db(engine, playlist_info):
     return playlist
 
 
-def create_song(path, duration, playlist_name='unknown'):
-    engine = create_db()
+def create_song(path, duration, playlist_name='unknown', db_name=''):
+    if db_name:
+        engine = create_db(db_name)
+    else:
+        engine = create_db()
 
     if exists(path):
         # song = AudioSegment.from_mp3(path)
 
         original_song = EasyID3(path)
-        print(dir(original_song))
-        print(original_song.size)
+        # print(dir(original_song))
+        # print(original_song.size)
 
         db_song = {
             'name': original_song['title'][0],
@@ -58,7 +61,7 @@ def create_song(path, duration, playlist_name='unknown'):
             'length': duration,
             'album': original_song['album'][0]
         }
-        print(db_song)
+
         # original_song = MP3(path)
         # song['length'] = original_song.info.length
 
@@ -70,19 +73,25 @@ def create_song(path, duration, playlist_name='unknown'):
 
         insert_playlist_into_db(engine, playlist_info)
     else:
-        raise Exception('There is not such file or directory! Try another one.')
+        raise Exception('There is not such file or directory! Try another one')
 
 
-def get_song_info(engine):
+def get_song(engine, name):
     session = Session(bind=engine)
-    all_songs = session.query(Song).all()
-    return all_songs
+    # all_songs = session.query(Song).all()
+    # print(all_songs)
+    return session.query(Song).filter(Song.name == name).all()
 
 
-def main():
-    create_song('song.mp3', 3.22, playlist_name='my_playlist')
-    # create_song('music_player.db', 'dsf')
+def get_playlist(engine, playlist_name):
+    session = Session(bind=engine)
+    return session.query(Playlist).filter(Playlist.name == playlist_name).all()
 
 
-if __name__ == '__main__':
-    main()
+# def main():
+#     create_song('song.mp3', 3.22, playlist_name='my_playlist')
+#     # create_song('music_player.db', 'dsf')
+
+
+# if __name__ == '__main__':
+#     main()

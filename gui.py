@@ -533,7 +533,7 @@ class Player(Qt.QWidget):
         self.playOnceAct = Qt.QAction(
             'Play once', self, triggered=self.playOnceSong)
         self.shuffleAct = Qt.QAction(
-            'Shuffle', self, triggered=self.playlist.shuffle())
+            'Shuffle', self, triggered=self.playlist.shuffle)
         self.sequentialAct = Qt.QAction(
             'Sequential', self, triggered=self.playSequential)
         self.fileOpenAct = Qt.QAction('Open', self, triggered=self.open)
