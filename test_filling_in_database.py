@@ -13,7 +13,7 @@ class TestCreateDb(unittest.TestCase):
         self.engine = create_db('test_db')
         self.song_info = {
             'name': 'song_name',
-            'path': '/home/user/song.mp3',
+            'path': './song.mp3',
             'artist': 'artist_name',
             'length': 3.46,
             'album': 'album_name'

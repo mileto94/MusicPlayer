@@ -87,6 +87,8 @@ def update_song_id3(engine, song_name, new_name='', new_artist='',
                     new_album=''):
     session = Session(bind=engine)
     song = session.query(Song).filter(Song.name == song_name)
+    song_path = song.one().path
+
     updated = {}
 
     if new_name:
@@ -98,7 +100,26 @@ def update_song_id3(engine, song_name, new_name='', new_artist='',
     song.update(updated)
     session.commit()
 
+    original_song = EasyID3(song_path)
+    for key, value in updated.items():
+        if key == 'name':
+            key = 'title'
+        original_song[key] = value
+    original_song.save()
+
 
 def get_playlist(engine, playlist_name):
     session = Session(bind=engine)
     return session.query(Playlist).filter(Playlist.name == playlist_name).one()
+
+
+# def main():
+#     engine = create_db()
+#     # update_song_id3(engine, 'new_test',
+#     #                 new_artist='Pesho',
+#     #                 new_album='2003')
+#     update_song_id3(engine, 'new_test', 'lqlq', '455')
+
+
+# if __name__ == '__main__':
+#     main()
