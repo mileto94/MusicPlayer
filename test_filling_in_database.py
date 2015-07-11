@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from create_database import create_db, Song, Playlist
 from factory import (
-    get_song, insert_song_into_db, insert_playlist_into_db, get_playlist,
-    create_song)
+    get_songs, insert_song_into_db, insert_playlist_into_db, get_playlist,
+    create_song, update_song_id3)
 
 
 class TestCreateDb(unittest.TestCase):
@@ -48,34 +48,33 @@ class TestCreateDb(unittest.TestCase):
 
     def test_insert_song_into_db_one_object(self):
         insert_song_into_db(self.engine, self.song_info)
-        result = get_song(self.engine, 'song_name')
+        result = get_songs(self.engine, 'song_name')
         expected = [self.song]
         self.assertEqual(result, expected)
 
     def test_insert_song_into_db_two_objects(self):
         insert_song_into_db(self.engine, self.song_info)
         insert_song_into_db(self.engine, self.song_info)
-        result = get_song(self.engine, 'song_name')
+        result = get_songs(self.engine, 'song_name')
         expected = [self.song] * 2
         self.assertEqual(result, expected)
 
     def test_insert_playlist_into_db_one_object(self):
         insert_playlist_into_db(self.engine, self.playlist_info)
-        result = get_playlist(self.engine, 'test_playlist')
+        result = [get_playlist(self.engine, 'test_playlist')]
         expected = [self.playlist]
         self.assertEqual(result, expected)
 
     def test_insert_playlist_into_db_five_objects(self):
         for _ in range(5):
             insert_playlist_into_db(self.engine, self.playlist_info)
-        result = get_playlist(self.engine, 'test_playlist')
+        result = [get_playlist(self.engine, 'test_playlist')]
         expected = [self.playlist]
         self.assertEqual(result, expected)
 
     def test_create_song_with_valid_file_path(self):
         create_song('song.mp3', 3.22, playlist_name='my_playlist',
                     db_name='test_db')
-        # song = get_song(self.engine, 'song.mp3')[0]
         session = Session(bind=self.engine)
         all_songs = session.query(Song).all()
         all_playlists = session.query(Playlist).all()
@@ -86,6 +85,31 @@ class TestCreateDb(unittest.TestCase):
         with self.assertRaises(Exception):
             create_song('Asong.mp3', 3.22, playlist_name='my_playlist',
                         db_name='test_db')
+
+    def test_update_song_id3(self):
+        insert_song_into_db(self.engine, self.song_info)
+        update_song_id3(
+            self.engine,
+            self.song_info['name'],
+            new_name='test',
+            new_artist='Pesho',
+            new_album='2003')
+        songs = get_songs(self.engine, 'test')
+        self.song.name = 'test'
+        self.song.artist = 'Pesho'
+        self.song.album = '2003'
+        self.assertEqual([self.song], songs)
+
+    def test_update_song_id3_with_wrong_params(self):
+        insert_song_into_db(self.engine, self.song_info)
+        name = self.song_info['name']
+        update_song_id3(
+            self.engine,
+            name,
+            'Pesho',
+            '2003')
+        songs = get_songs(self.engine, name)
+        self.assertEqual([], songs)
 
 
 if __name__ == '__main__':

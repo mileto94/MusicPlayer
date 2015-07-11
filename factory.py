@@ -76,22 +76,29 @@ def create_song(path, duration, playlist_name='unknown', db_name=''):
         raise Exception('There is not such file or directory! Try another one')
 
 
-def get_song(engine, name):
+def get_songs(engine, name):
     session = Session(bind=engine)
     # all_songs = session.query(Song).all()
     # print(all_songs)
     return session.query(Song).filter(Song.name == name).all()
 
 
+def update_song_id3(engine, song_name, new_name='', new_artist='',
+                    new_album=''):
+    session = Session(bind=engine)
+    song = session.query(Song).filter(Song.name == song_name)
+    updated = {}
+
+    if new_name:
+        updated['name'] = new_name
+    if new_artist:
+        updated['artist'] = new_artist
+    if new_album:
+        updated['album'] = new_album
+    song.update(updated)
+    session.commit()
+
+
 def get_playlist(engine, playlist_name):
     session = Session(bind=engine)
-    return session.query(Playlist).filter(Playlist.name == playlist_name).all()
-
-
-# def main():
-#     create_song('song.mp3', 3.22, playlist_name='my_playlist')
-#     # create_song('music_player.db', 'dsf')
-
-
-# if __name__ == '__main__':
-#     main()
+    return session.query(Playlist).filter(Playlist.name == playlist_name).one()

@@ -14,32 +14,33 @@ This app will be like library - it could be used both as terminal and desktop ap
 GUI will have main sreen with buttons for play, pause, stop, previous, next and repeat song. It will show artist, song's name, song's length and current seconds of playing the file. There will be clock with real time and button for raising up or slowing down the volume. Probably the app will be able to visualize some kind of video files.
 
 
-**MusicPlayer** uses **pyQt** for GUI. ORM in Python via **SQLAlchemy**. For playing files the app uses **pyglet**.
+**MusicPlayer** uses **pyQt** for GUI. ORM in Python via **SQLAlchemy**. For playing files the app uses **PyQt5**.
 
 Short links of used libs for music:
- - [pyglet] - play music
+ - [PyQt5] - play music and create GUI
  - [mutagen] - get files' metadata
- - [pydub] - convert files to .wav
 
  
 #### Requires
-ffmpeg, which is available after **sudo apt-get install libav-tools** in OS X.
+> ffmpeg, which is available after **sudo apt-get install libav-tools** in OS X.
 
 
 #### Installation:
  - sudo apt-get install python3.4-dev
  - sudo apt-get install build-essential
- - sudo apt-get install qt4-dev-tools libqt4-dev libqt4-core libqt4-gui
  - unpack sip and pyqt
  - $ cd ~/sip-some-version 
  - python3.4 configure.py
  - sudo make # installs sip package
  - sudo make install
  - $ cd ~/pyqt-directory
+ - sudo apt-get install qt5-default
+ - sudo apt-get install python3-pyqt5.qtmultimedia
+ - sudo apt-get install libqt5multimedia5 libqt5multimedia5-plugins libqt5multimediaquick-p5 
  - sudo python3.4 configure.py
  - sudo make # installs qt package
  - sudo make install
- 
+
 
 License
 ----
@@ -47,5 +48,5 @@ License
 MIT
 
 [mutagen]:https://mutagen.readthedocs.org/en/latest/tutorial.html
-[pyglet]:https://pyglet.readthedocs.org/en/pyglet-1.2-maintenance/programming_guide/quickstart.html#mp3
+[PyQt5]:http://www.riverbankcomputing.com/software/pyqt/download5
 [pydub]:http://pydub.com/
