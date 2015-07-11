@@ -1,6 +1,7 @@
 import sys
 from PyQt5 import Qt, QtCore
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaPlaylist, QVideoFrame
+# from factory import create_song
 
 
 class Controllers(Qt.QWidget):
@@ -110,9 +111,15 @@ class Controllers(Qt.QWidget):
             return
 
         self.playerMuted = muted
-        self.muteButton.setIcon(self.style().standardIcon(
-            Qt.QStyle.SP_MediaVolumeMuted if muted
-            else Qt.QStyle.SP_MediaVolume))
+
+        if muted:
+            self.muteButton.setIcon(self.style().standardIcon(
+                Qt.QStyle.SP_MediaVolumeMuted))
+            self.setVolume(0)
+        else:
+            self.muteButton.setIcon(self.style().standardIcon(
+                Qt.QStyle.SP_MediaVolume))
+            self.setVolume(100)
 
     def getState(self):
         return self.playerState
@@ -294,7 +301,6 @@ class HistogramWidget(Qt.QWidget):
     def processFrame(self, frame):
         if self.mIsBusy:
             return
-
         self.mIsBusy = True
         QtCore.QMetaObject.invokeMethod(
             self.mProcessor,
@@ -317,7 +323,6 @@ class HistogramWidget(Qt.QWidget):
                 self.height(),
                 Qt.QColor.fromRgb(0, 0, 0))
             return
-        print('ELSE')
         barWidth = self.width() / float(len(self.mHistogram))
 
         for index, value in enumerate(self.mHistogram):
@@ -462,9 +467,18 @@ class Player(Qt.QWidget):
         # create basic actions
         self.createActions()
 
-        # create simpleButton
-        simpleButton = Qt.QToolButton()
-        simpleButton.setDefaultAction(self.simpleAct)
+        # create simple button to repeat song
+        self.repeatButton = Qt.QToolButton()
+        self.repeatButton.setDefaultAction(self.repeatAct)
+
+        # create playOnceButton
+        self.playOnceButton = Qt.QToolButton()
+        self.playOnceButton.setDefaultAction(self.playOnceAct)
+        self.playOnceButton.setEnabled(False)
+
+        # create shuffleButton
+        shuffleButton = Qt.QToolButton()
+        shuffleButton.setDefaultAction(self.shuffleAct)
 
         # create fileButton for fileMenu
         fileButton = Qt.QToolButton()
@@ -473,15 +487,16 @@ class Player(Qt.QWidget):
         fileButton.setMenu(self.popFileMenu())
 
         # create editButton for editMenu
-        editButton = Qt.QToolButton()
-        editButton.setText('Edit')
-        editButton.setPopupMode(Qt.QToolButton.MenuButtonPopup)
-        editButton.setMenu(self.popEditMenu())
+        closeButton = Qt.QToolButton()
+        closeButton.setText('Edit')
+        closeButton.setDefaultAction(self.fileCloseAct)
 
         # display in toolBar these buttons
-        toolBar.addWidget(simpleButton)
+        toolBar.addWidget(self.repeatButton)
+        toolBar.addWidget(self.playOnceButton)
+        toolBar.addWidget(shuffleButton)
         toolBar.addWidget(fileButton)
-        toolBar.addWidget(editButton)
+        toolBar.addWidget(closeButton)
 
         # add toolBar to layout of the player
         layout.addWidget(toolBar)
@@ -508,26 +523,27 @@ class Player(Qt.QWidget):
         aMenu.addAction(self.fileCloseAct)
         return aMenu
 
-    # create editMenu
-    def popEditMenu(self):
-        aMenu = Qt.QMenu(self)
-        aMenu.addAction(self.editCopyAct)
-        aMenu.addAction(self.filePasteAct)
-        return aMenu
-
     def createActions(self):
-        self.simpleAct = Qt.QAction('Simple', self, triggered=self.do_nothing)
+        self.repeatAct = Qt.QAction('Repeat', self, triggered=self.repeatSong)
+        self.playOnceAct = Qt.QAction(
+            'Play once', self, triggered=self.playOnceSong)
+        self.shuffleAct = Qt.QAction(
+            'Shuffle', self, triggered=self.playlist.shuffle)
         self.fileOpenAct = Qt.QAction('Open', self, triggered=self.open)
         self.fileOpenAct.setShortcut('Ctrl+O')
 
         self.fileCloseAct = Qt.QAction('Close', self, triggered=self.close)
         self.fileCloseAct.setShortcut('Ctrl+Q')
 
-        self.editCopyAct = Qt.QAction('Copy', self, triggered=self.do_nothing)
-        self.filePasteAct = Qt.QAction('Paste', self, triggered=self.do_nothing)
+    def repeatSong(self):
+        self.playlist.setPlaybackMode(QMediaPlaylist.CurrentItemInLoop)
+        self.repeatButton.setEnabled(False)
+        self.playOnceButton.setEnabled(True)
 
-    def do_nothing(self):
-        print('do nothing')
+    def playOnceSong(self):
+        self.playlist.setPlaybackMode(QMediaPlaylist.CurrentItemOnce)
+        self.playOnceButton.setEnabled(False)
+        self.repeatButton.setEnabled(True)
 
     # get and display song duration
     def durationChanged(self, duration):
@@ -657,6 +673,7 @@ class Player(Qt.QWidget):
                 # print(dir(url))
                 # print(url.url())  # file:///home/milka/Documents/MusicPlayer/song.mp3
                 # save_to_db song url
+                # create_song(url.path(), self.duration, playlist_name=self.playlist)
                 # print(fileInfo.suffix())  # wav, mp3
                 if fileInfo.suffix().lower() == 'm3u':
                     self.playlist.load(url)
